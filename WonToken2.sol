@@ -19,7 +19,6 @@ contract WonToken is AccessControlEnumerable, ERC20Burnable{
 
     //이번달 충전 금액
     mapping(address=>uint128) wonOfMonth;
-    
     //이번달 인센티브 금액
     mapping(address=>uint128) incentiveOfMonth;
     
@@ -43,16 +42,24 @@ contract WonToken is AccessControlEnumerable, ERC20Burnable{
         incentiveOfMonth[_to] += incentiveRate;
     }
     
-
+    //   21.09.23. charge 안에 내용을 chargeCheck안에다가 합쳤음
+    // function charge(address _to, uint256 _amount) public virtual {
+    //     require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
+    //     _mint(_to, _amount);
+    // }
     
-    
-    function Charge(address _to, uint128  _amount) public {
+    function chargeCheck(address _to, uint128  _amount) public {
          //한달 최대 충전량
         require(_amount >= minWonCharge);  //최소충전금액 10000원을 넘어야 충전가능
         require(wonOfMonth[_to] + _amount <= maxWonCharge);   //최대충전금액 2000000원을 넘지않아야함
+        // require(incentiveMaxManage[_to] + _amount <=maxIncentive);
+        
+        //여기서 우리가 생각해야 되는게 30만원 충전시 인센티브 받고 21만원 충전 했을 경우 20만원은 인센티브 받고 1만원은 그냥 충전 **인센티브 붙는걸 생각 해야됨
         wonOfMonth[_to] += _amount;
         
- 
+        // if((incentiveMaxManage[_to] + _amount) <= maxIncentive){
+        //     incentiveCharge(_to,_amount);
+        // }
         
         if((incentiveMaxManage[_to] + _amount) <= maxIncentive){
              require(incentiveMaxManage[_to] + _amount <=maxIncentive);
@@ -70,11 +77,10 @@ contract WonToken is AccessControlEnumerable, ERC20Burnable{
                 
             }
         }
-     
         emit chargeResult(true, _amount);
     }
     
-    //이달의 충전금액  ////인센티브 정확히 카운팅하는 함수  //결제히스토리용 함수
+    //이번달 충전금액 확인  ////인센티브 정확히 카운팅하는 함수
     function balanceWonOfMon(address _account) public view returns (uint128) {
         return wonOfMonth[_account]+incentiveOfMonth[_account];
     }
@@ -82,14 +88,11 @@ contract WonToken is AccessControlEnumerable, ERC20Burnable{
     function balanceIncOfMon(address _account) public view returns (uint128) {
         return incentiveOfMonth[_account];
     }
-    
     //이번달 충전금액, 인센티브 초기화
     function initOfMonth() public {
         wonOfMonth[msg.sender] = 0;
         //incentiveOfMonth = 0;
     }
-    
-    //balance와 balanceOf함수는 쓰지않을듯 함
     function balance(address _account) external view virtual returns(uint256) {
         return balanceOf(_account);
     }
