@@ -21,9 +21,8 @@ contract BeezToken is AccessControlEnumerable, ERC20Burnable{
     }
     
     
-    //결제, 리뷰 페이백
-    function chargePayback(address to, uint128 amount, address caller) external virtual  {
-        require(hasRole(MINTER_ROLE, caller), "ERC20PresetMinterPauser: must have minter role to mint");
+    //결제, 리뷰 페이백  external- 컨트랙트 바깥에서만 호출될 수 있고 컨트랙트 내의 다른 함수에서 호출 X(public과 동일)
+    function Payback(address to, uint128 amount) external virtual  {
         _mint(to, amount/100);
         beezOfMonth[to] = beezOfMonth[to] + amount/100;
     }

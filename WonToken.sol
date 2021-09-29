@@ -77,7 +77,11 @@ contract WonToken is AccessControlEnumerable, ERC20Burnable{
     //이달의 충전금액  ////인센티브 정확히 카운팅하는 함수  //결제히스토리용 함수
     function balanceWonOfMon(address _account) public view returns (uint128) {
         return wonOfMonth[_account]+incentiveOfMonth[_account];
+        // month check
+       
+        
     }
+    
     //이번달 인센티브 확인
     function balanceIncOfMon(address _account) public view returns (uint128) {
         return incentiveOfMonth[_account];

@@ -1,55 +1,19 @@
 //// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract Review {
-    
-    struct Receipt{
-        address visitor;
-        address shopId;
-        uint cost;
-        uint wonTokenCount;
-        uint bzTokenCount;
-        
-    }
-    
-    
-    mapping (address=>mapping(address=>Receipt[]))history;
-    mapping (address=>Receipt[])shopHistory;
-    mapping (address=>Receipt[])visitorHistory;
-    
-    
-    modifier costCheck(uint cost, uint wonTokenCount, uint bzTokenCount){
-        require(cost == (wonTokenCount + bzTokenCount));
-        _;
-    }
-    
+import "./Payment.sol";
 
-    function writeReview(address visitor, address shopId, uint cost,  uint wonTokenCount, uint bzTokenCount) public costCheck(cost, wonTokenCount,bzTokenCount){
-        
-    Receipt memory rc = Receipt(
-        visitor,
-        shopId,
-        cost,
-        wonTokenCount,
-        bzTokenCount
-        
-        );
+contract Review  {
+    Payment payment;
     
-    history[visitor][shopId].push(rc);
-    shopHistory[shopId].push(rc);
-    visitorHistory[visitor].push(rc);
+    
+    function writeReviewforVisitor(uint value1, uint value2, uint value3) public returns(bytes32){
+    // keccak256(receiptHash + keccak256(value1,valu2,value3));    
     }
-
-    function getReviewForShop(address shopId) public view returns(Receipt[] memory){
-    return shopHistory[shopId];
    
-    }
     
-    function getReviewForCustomer(address visitor) public view returns(Receipt[] memory){
-    return visitorHistory[visitor];
-   
-    }
-    
-    
+    // function getReview(address _shopId) public view returns(Receipt memory){
+     
+    // }
     
 }
