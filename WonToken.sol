@@ -20,6 +20,9 @@ contract WonToken is AccessControlEnumerable, ERC20Burnable{
     //이번달 충전 금액
     mapping(address=>uint128) wonOfMonth;
     
+    mapping(uint=>mapping(address=>uint128[])) accountlist;  //month reset mapping
+            
+        
     //이번달 인센티브 금액
     mapping(address=>uint128) incentiveOfMonth;
     
@@ -74,9 +77,9 @@ contract WonToken is AccessControlEnumerable, ERC20Burnable{
         emit chargeResult(true, _amount);
     }
     
-    //이달의 충전금액  ////인센티브 정확히 카운팅하는 함수  //결제히스토리용 함수
+    //이달의 충전금액   //결제히스토리용 함수
     function balanceWonOfMon(address _account) public view returns (uint128) {
-        return wonOfMonth[_account]+incentiveOfMonth[_account];
+        return wonOfMonth[_account];
         // month check
        
         
@@ -91,14 +94,15 @@ contract WonToken is AccessControlEnumerable, ERC20Burnable{
     function initOfMonth() public {
         wonOfMonth[msg.sender] = 0;
         //incentiveOfMonth = 0;
+        
     }
     
-    //balance와 balanceOf함수는 쓰지않을듯 함
     function balance(address _account) external view virtual returns(uint256) {
         return balanceOf(_account);
     }
+    
     //결제
-    function payment(address _sender, address _recipient, uint128 _amount) public virtual returns (bool){
+    function payment(address _sender, address _recipient, uint128 _amount, uint256 _date) public virtual returns (bool){
         _transfer(_sender, _recipient, _amount);
         // bz.paybackCharge(_sender,_amount);
         return true;
