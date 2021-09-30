@@ -16,7 +16,6 @@ contract WonToken is AccessControlEnumerable, ERC20Burnable{
     
     struct incentive{
         uint256 lastChargeDate;      //마지막 인센티브 충전 날짜 체크
-        //uint128 balance;            //인센티브 밸런스체크
         uint128 wonOfMonth;         //이번달 충전 금액  //maxWonCharge - wonOfMonth[address] : 이번달 충전가능금액(charge.vue에 출력)
         uint128 incentiveOfMonth;   //이번달 인센티브 금액  //maxIncentive - incentiveOfMonth[address] : 이번달 혜택가능금액(charge.vue에 출력)
     }
@@ -31,23 +30,19 @@ contract WonToken is AccessControlEnumerable, ERC20Burnable{
     
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
-
-    // //이번달 충전 금액  //maxWonCharge - wonOfMonth[address] : 이번달 충전가능금액(charge.vue에 출력)
-    // mapping(address=>uint128) wonOfMonth;
-    
-    // //이번달 인센티브 금액  //maxIncentive - incentiveOfMonth[address] : 이번달 혜택가능금액(charge.vue에 출력)
-    // mapping(address=>uint128) incentiveOfMonth;
     
     //충전결과 로그 
     event chargeResult(bool result, uint128 chargeAmount);
-
-    function updateMonth(address _address) private {
+    
+    //매달 초기화 함수
+    function updateMonth(address _address, uint256 _date) private {
         //금액 충전시 마지막으로 인센티브 충전된 날짜가 지난달인 경우 (block.timestamp >= month && =>이건 빼야됨)
         if(incentiveCheck[_address].lastChargeDate < month){
             incentiveCheck[_address].wonOfMonth = 0;  //인센티브 밸런스 초기화(여기서 이번에 충전된 )
             incentiveCheck[_address].incentiveOfMonth = 0;
         }
-        incentiveCheck[_address].lastChargeDate = block.timestamp; //최근 인센티브 충전된 날짜 현재시간으로 업데이트
+        //(나중에 다시 block.timestamp으로 수정)
+        incentiveCheck[_address].lastChargeDate = _date; //최근 인센티브 충전된 날짜 현재시간으로 업데이트
     }
     
     //충전
@@ -67,12 +62,13 @@ contract WonToken is AccessControlEnumerable, ERC20Burnable{
         incentiveCheck[_to].incentiveOfMonth += incentiveRate;
     }
     
-    function chargeCheck(address _to, uint128  _amount) public {
+    function chargeCheck(address _to, uint128  _amount, uint256 _date) public {
          //한달 최대 충전량
+        updateMonth(_to, _date);    //require 전에 해줘야됨. 전달+지금충전하려는 금액이 2백이 넘으면 실행 불가.
         require(_amount >= minWonCharge);   // //최소충전금액 10000원을 넘어야 충전가능
         require(incentiveCheck[_to].wonOfMonth + _amount <= maxWonCharge); //최대충전금액 2000000원을 넘지않아야함
         //여기서 우리가 생각해야 되는게 30만원 충전시 인센티브 받고 21만원 충전 했을 경우 20만원은 인센티브 받고 1만원은 그냥 충전 **인센티브 붙는걸 생각 해야됨 => 완료
-        updateMonth(_to);   //
+        
         incentiveCheck[_to].wonOfMonth += _amount;
         //이번달 충전금액(현재 충전할 금액을 더한)이 최대인센티브(50만원) 보다 작거나 같으면 인센티브 충전
         if(incentiveCheck[_to].wonOfMonth <= maxIncentive){
