@@ -8,7 +8,6 @@ pragma solidity ^0.8.0;
 
 import "./BeezToken.sol";
 import "./WonToken.sol";
-import "./review.sol";
 
 contract Payment {
 
@@ -82,17 +81,40 @@ bool payBackButtonOn=true;   //상태변수 (기본 저장위치는 스토리지
     
     }
     
+    /******************************************************************************************************************/
+    //매달 변경될때, aws람다를 사용해 백앤드에 요청을 보낸다. 요청받은 백앤드는 현재 시간(UNIX시간)을 setMonth에 입력 
+    function setMonth(uint256 _date) public {
+        wonTokenAddr.setMonth(_date);
+        bzTokenAddr.setMonth(_date);
+    }
+    
+    //토큰CA를 한번만 setting하기 
+    WonToken wonTokenAddr;
+    BeezToken bzTokenAddr;
+    function setTokenCA(WonToken _wonTokenAddr, BeezToken _bzTokenAddr) public {
+        wonTokenAddr = _wonTokenAddr;
+        bzTokenAddr = _bzTokenAddr;
+    }
+    
+    //wonToken : mint(생성), beezToken : burn(소멸)   //시스템이 해야될 일
+    function exchange(address _to, uint256 _amount) public {
+        wonTokenAddr.charge(_to, _amount);
+        bzTokenAddr.exchange(_to, _amount);
+    }
+    
+    /******************************************************************************************************************/
+    
     // beez balance check 사용가능 bz 체크
-    function beezBalance(BeezToken bzTokenAddr, address _to) public view returns (uint256){
+    function beezBalance(address _to) public view returns (uint256){
         return bzTokenAddr.balance(_to);
     }
     //won balance check 사용가능 WON체크
-    function wonBalance(WonToken wonTokenAddr, address _to) public view returns (uint256){
+    function wonBalance(address _to) public view returns (uint256){
         return wonTokenAddr.balance(_to);
     }
 
     //receipt creation 결제(영수증 생성)
-    function payment(WonToken wonTokenAddr, BeezToken bzTokenAddr, address _visitor, address _recipient, uint128 _cost, uint128 _wonAmount, 
+    function payment(address _visitor, address _recipient, uint128 _cost, uint128 _wonAmount, 
     uint128 _bzAmount, uint256 _date) public costCheck(_cost, _wonAmount,_bzAmount){
         
         uint visitTime = block.timestamp;
@@ -161,32 +183,28 @@ bool payBackButtonOn=true;   //상태변수 (기본 저장위치는 스토리지
     
     
 //main page load 
-    function userMainLoad(BeezToken bz,WonToken won, address _account) public
+    function userMainLoad(address _account) public
     view returns(uint256 canUseWon ,uint256 monthChargeWon,uint256 monthIncentiveWon,uint256 monthBeez,uint256 canUseBeez){
-         canUseWon = won.balance(_account); //사용가능 금액
-         monthChargeWon = won.balanceWonOfMon(_account);     //이달의 충전금액
-         monthIncentiveWon =won.balanceIncOfMon(_account);   //이달의 인센티브
-         monthBeez =  bz.balanceBeezOfMon(_account); //이달의 BEEZ
-         canUseBeez = bz.balance(_account); //사용가능 BEEZ
+         canUseWon = wonTokenAddr.balance(_account); //사용가능 금액
+         monthChargeWon = wonTokenAddr.balanceWonOfMon(_account);     //이달의 충전금액
+         monthIncentiveWon = wonTokenAddr.balanceIncOfMon(_account);   //이달의 인센티브
+         monthBeez =  bzTokenAddr.balanceBeezOfMon(_account); //이달의 BEEZ
+         canUseBeez = bzTokenAddr.balance(_account); //사용가능 BEEZ
     }
     
     
     
-    function recipientMainLoad(BeezToken bz, WonToken won, address _recipient) public view returns(uint256 wonIncome,uint256 exChangeWon,uint256 bzIncome,
+    function recipientMainLoad(address _recipient) public view returns(uint256 wonIncome,uint256 exChangeWon,uint256 bzIncome,
     uint256 exChangeBz){
         // won.balanceOfWon[_recipient] + won.balanceWonOfMon[_store]; 총매출은 프론트 단에서 처리해야 할듯
-             wonIncome = won.balanceWonOfMon(_recipient);
-             exChangeWon = won.balance(_recipient);
-             bzIncome = bz.balanceBeezOfMon(_recipient);
-             exChangeBz = bz.balance(_recipient);
+             wonIncome = wonTokenAddr.balanceWonOfMon(_recipient);
+             exChangeWon = wonTokenAddr.balance(_recipient);
+             bzIncome = bzTokenAddr.balanceBeezOfMon(_recipient);
+             exChangeBz = bzTokenAddr.balance(_recipient);
           
     }
     
     
     
   }
-    
-
-
-
     
