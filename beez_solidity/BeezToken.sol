@@ -19,7 +19,8 @@ contract BeezToken is AccessControlEnumerable, ERC20{
         uint128 beezOfMonth;         //이번달 충전 금액  //maxWonCharge - wonOfMonth[address] : 이번달 충전가능금액(charge.vue에 출력)
     }
     
-    uint256 month = 1630422000;   //매달 초기화(이달 1일을 나타냄)
+    uint256 month = 1633014000;  //매달 초기화(이달 1일을 나타냄)
+    uint8 decimals = 10**0;      //decimals 10**18 X / 10**0 = etherscan, remix 보기 편함 
     mapping (address => payback) paybackCheck;  //주소 넣어서 인센티브 구조체 가져오는 매핑                    //인센티브 비율
     
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
@@ -43,14 +44,17 @@ contract BeezToken is AccessControlEnumerable, ERC20{
         require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         month = _month;
     }
+    function getMonth() public view returns (uint256) {
+        return month;
+    }
     
 /******************************************************************************************************************/
 /*********사용자, 소상공인 결재 / 사용자 리뷰페이백 / 소상공인 환전 함수***********/
 
     //결제
     function payment(address _sender, address _recipient, uint128 _amount, uint256 _date) public virtual returns (bool){
-         updateMonth(_recipient, _date); //_date는 나중에 뺄꺼임. 이번달 첫 결재할 경우, 소상공인 incentiveCheck[_recipient].wonOfMonth 0으로 만들기 위해 //
-        _transfer(_sender, _recipient, _amount); //won 결제
+        updateMonth(_recipient, _date); //_date는 나중에 뺄꺼임. 이번달 첫 결재할 경우, 소상공인 incentiveCheck[_recipient].wonOfMonth 0으로 만들기 위해 //
+        _transfer(_sender, _recipient, _amount*decimals); //won 결제
         paybackCheck[_recipient].beezOfMonth += _amount;   //소상공인 (이번달)현금매출 증가
         return true;
     }
@@ -58,14 +62,14 @@ contract BeezToken is AccessControlEnumerable, ERC20{
     //리뷰 페이백  external- 컨트랙트 바깥에서만 호출될 수 있고 컨트랙트 내의 다른 함수에서 호출 X(public과 동일)
     function Payback(address _to, uint128 _amount, uint256 _date) external virtual  {
         updateMonth(_to, _date);
-        _mint(_to, _amount/100);
+        _mint(_to, (_amount/100)*decimals);
         paybackCheck[_to].beezOfMonth = paybackCheck[_to].beezOfMonth + _amount/100;
     }
     
     //소상공인 환전 함수 
      function exchange(address _to, uint256  _amount) public {
          require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
-        _burn(_to, _amount);
+        _burn(_to, _amount*decimals);
      }
      
 /******************************************************************************************************************/
@@ -86,5 +90,5 @@ contract BeezToken is AccessControlEnumerable, ERC20{
         }
     }
 
-/******************************************************************************************************************/   
+/******************************************************************************************************************/
 }

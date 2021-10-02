@@ -22,10 +22,11 @@ contract WonToken is AccessControlEnumerable, ERC20{
         uint128 incentiveOfMonth;   //이번달 인센티브 금액  //maxIncentive - incentiveOfMonth[address] : 이번달 혜택가능금액(charge.vue에 출력) //사용자만 사용, 소상공인은 쓰지 않음
     }
 
-    uint256 month = 1630422000;   //매달 초기화(이달 1일을 나타냄)
     mapping (address => chargeStruct) chargeStructCheck;  //주소 넣어서 인센티브 구조체 가져오는 매핑
     uint128 incentiveRate;                          //인센티브 비율
     
+    uint256 month = 1633014000;     //매달 초기화(이달 1일을 나타냄)
+    uint8 decimals = 10**0;             //decimals 10**18 X / 10**0 = etherscan, remix 보기 편함 
     uint128 maxIncentive = 500000;  //한달 혜택가능금액
     uint128 maxWonCharge = 2000000; //한달 충전가능금액
     uint128 minWonCharge = 10000;   //충전은 10000원 이상
@@ -55,6 +56,9 @@ contract WonToken is AccessControlEnumerable, ERC20{
         require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         month = _month;
     }
+    function getMonth() public view returns (uint256) {
+        return month;
+    }
     
 /******************************************************************************************************************/
 /*********사용자 충전 / 소상공인 환전&출금에 사용되는 생성(mint), 소멸(burn) /사용자, 소상공인 결재 함수***********/
@@ -62,14 +66,14 @@ contract WonToken is AccessControlEnumerable, ERC20{
     //충전
     function charge(address _to, uint256 _amount) public virtual {
         require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
-        _mint(_to, _amount);
+        _mint(_to, _amount*decimals);
     }
     
     //인센티브 충전
     function incentiveCharge(address _to, uint128 _amount) internal virtual {
         require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         incentiveRate = _amount/10;
-        _mint(_to, _amount + incentiveRate);
+        _mint(_to, (_amount + incentiveRate)*decimals);
         chargeStructCheck[_to].incentiveOfMonth += incentiveRate;
     }
     //충전 + 인센티브 충전
@@ -99,13 +103,13 @@ contract WonToken is AccessControlEnumerable, ERC20{
     //소상공인 출금 함수 
      function withDraw(address _to, uint128  _amount) public {
          require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
-        _burn(_to, _amount);
+        _burn(_to, _amount*decimals);
      }
      
     //원화 토큰 결제
     function payment(address _sender, address _recipient, uint128 _amount, uint256 _date) public virtual returns (bool){
         updateMonth(_recipient, _date); //_date는 나중에 뺄꺼임. 이번달 첫 결재할 경우, 소상공인 incentiveCheck[_recipient].wonOfMonth 0으로 만들기 위해 //
-        _transfer(_sender, _recipient, _amount); //won 결제
+        _transfer(_sender, _recipient, _amount*decimals); //won 결제
         chargeStructCheck[_recipient].wonOfMonth += _amount;   //소상공인 (이번달)현금매출 증가
         return true;
     }
