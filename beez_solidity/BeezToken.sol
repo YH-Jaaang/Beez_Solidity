@@ -21,7 +21,8 @@ contract BeezToken is AccessControlEnumerable, ERC20{
     
     uint256 month = 1633014000;  //매달 초기화(이달 1일을 나타냄)
     uint8 decimals = 10**0;      //decimals 10**18 X / 10**0 = etherscan, remix 보기 편함 
-    mapping (address => payback) paybackCheck;  //주소 넣어서 인센티브 구조체 가져오는 매핑                    //인센티브 비율
+    uint8 incentiveRate = 100; //인센티브 비율
+    mapping (address => payback) paybackCheck;  //주소 넣어서 인센티브 구조체 가져오는 매핑                   
     
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -55,6 +56,8 @@ contract BeezToken is AccessControlEnumerable, ERC20{
     function payment(address _sender, address _recipient, uint128 _amount, uint256 _date) public virtual returns (bool){
         updateMonth(_recipient, _date); //_date는 나중에 뺄꺼임. 이번달 첫 결재할 경우, 소상공인 incentiveCheck[_recipient].wonOfMonth 0으로 만들기 위해 //
         _transfer(_sender, _recipient, _amount*decimals); //won 결제
+        _mint(_sender, (_amount/incentiveRate)*decimals); //payback 함수, 최대한 가스비를 줄이기 위해 합침
+        paybackCheck[_sender].beezOfMonth +=  _amount/incentiveRate;
         paybackCheck[_recipient].beezOfMonth += _amount;   //소상공인 (이번달)현금매출 증가
         return true;
     }
@@ -62,8 +65,9 @@ contract BeezToken is AccessControlEnumerable, ERC20{
     //리뷰 페이백  external- 컨트랙트 바깥에서만 호출될 수 있고 컨트랙트 내의 다른 함수에서 호출 X(public과 동일)
     function Payback(address _to, uint128 _amount, uint256 _date) external virtual  {
         updateMonth(_to, _date);
-        _mint(_to, (_amount/100)*decimals);
-        paybackCheck[_to].beezOfMonth = paybackCheck[_to].beezOfMonth + _amount/100;
+        _mint(_to, (_amount/incentiveRate)*decimals); //payback 함수
+        paybackCheck[_to].beezOfMonth +=  _amount/incentiveRate;
+        
     }
     
     //소상공인 환전 함수 

@@ -98,25 +98,25 @@ contract Payment {
     
     //receipt creation 결제(영수증 생성2)
     function payment(address _visitor, address _recipient, uint128 _cost, uint128 _wonAmount, 
-    uint128 _bzAmount, uint256 _date) public costCheck(_cost, _wonAmount,_bzAmount){
-        
-        uint visitTime = block.timestamp;
-        uint _value1=0;
-        uint _value2=0;
-        uint _value3=0;
+    uint128 _bzAmount, uint256 _date) public costCheck(_cost, _wonAmount,_bzAmount) returns(uint8){
         require(wonTokenAddr.balance(_visitor) >= _wonAmount);
         require(bzTokenAddr.balance(_visitor) >= _bzAmount);
         wonTokenAddr.payment(_visitor, _recipient, _wonAmount, _date);
         bzTokenAddr.payment(_visitor, _recipient, _bzAmount, _date);
-        bzTokenAddr.Payback(_visitor, _wonAmount, _date);
+        //bzTokenAddr.Payback(_visitor, _wonAmount, _date);
         
         //시스템이 이벤트를 watch하다가 catch해서 bzTokenAddr.charge(sender, _wonAmount);를 실행시킨다.
 
         emit bzTokenPayback(true, _visitor, _recipient, _wonAmount, _bzAmount);
         
+        uint visitTime = block.timestamp;
+        uint _value1=0;
+        uint _value2=0;
+        uint _value3=0;
+        
         createReceipt(visitTime, _visitor,_recipient, _cost,_wonAmount,_bzAmount, _value1, _value2, _value3); //영수증 생성
         
-        
+        return uint8(1);
     }
 
     //사용자 영수증(리뷰) 조회
@@ -166,8 +166,8 @@ contract Payment {
     function userMainLoad() public
     view returns(uint256 canUseWon ,uint256 monthChargeWon,uint256 monthIncentiveWon,uint256 monthBeez,uint256 canUseBeez){
         canUseWon = wonTokenAddr.balance(msg.sender);                   //사용가능 금액
-        monthChargeWon = wonTokenAddr.balanceWonOfMon(msg.sender);      //이달의 충전금액
-        monthIncentiveWon = wonTokenAddr.balanceIncOfMon(msg.sender);   //이달의 인센티브
+        monthChargeWon = wonTokenAddr.balanceWonOfMon();      //이달의 충전금액
+        monthIncentiveWon = wonTokenAddr.balanceIncOfMon();   //이달의 인센티브
         monthBeez =  bzTokenAddr.balanceBeezOfMon(msg.sender);          //이달의 BEEZ
         canUseBeez = bzTokenAddr.balance(msg.sender);                   //사용가능 BEEZ
     }
@@ -176,7 +176,7 @@ contract Payment {
     function recipientMainLoad(address _recipient) public view returns(uint256 wonIncome,uint256 exChangeWon,uint256 bzIncome,
     uint256 exChangeBz){
         // won.balanceOfWon[_recipient] + won.balanceWonOfMon[_store]; 총매출은 프론트 단에서 처리해야 할듯
-        wonIncome = wonTokenAddr.balanceWonOfMon(_recipient);   //이번달 원매출
+        wonIncome = wonTokenAddr.balanceWonOfMon();   //이번달 원매출
         exChangeWon = wonTokenAddr.balance(_recipient);         //출금가능현금
         bzIncome = bzTokenAddr.balanceBeezOfMon(_recipient);    //이번달 비즈매출
         exChangeBz = bzTokenAddr.balance(_recipient);           //출금가능 비즈

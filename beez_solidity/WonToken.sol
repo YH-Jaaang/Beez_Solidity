@@ -89,7 +89,7 @@ contract WonToken is AccessControlEnumerable, ERC20{
             incentiveCharge(_to, _amount);
         }else{
             //이번달 충전 금액(현재 충전금액을 뺀)이 최대 인센티브보다 적다
-            if(chargeStructCheck[_to].wonOfMonth - _amount <maxIncentive){
+            if(chargeStructCheck[_to].wonOfMonth - _amount < maxIncentive){
                 charge(_to, chargeStructCheck[_to].wonOfMonth - maxIncentive);
                 incentiveCharge(_to, maxIncentive - (chargeStructCheck[_to].wonOfMonth - _amount));
             }
@@ -118,22 +118,22 @@ contract WonToken is AccessControlEnumerable, ERC20{
 /*************************사용자, 소상공인 MAIN화면에 출력되는 원화토큰 view 함수*********************************/
 
     //이달의 충전금액  ////인센티브 정확히 카운팅하는 함수  //결제히스토리용 함수
-    function balanceWonOfMon(address _account) public view returns (uint128){
-        if(chargeStructCheck[_account].lastChargeDate < month){
+    function balanceWonOfMon() public view returns (uint128){
+        if(chargeStructCheck[msg.sender].lastChargeDate < month){
             return 0;
         }
         else{
-            return chargeStructCheck[_account].wonOfMonth;
+            return chargeStructCheck[msg.sender].wonOfMonth;
         }
     }
     
     //이번달 인센티브 확인
-    function balanceIncOfMon(address _account) public view returns (uint128) {
-        if(chargeStructCheck[_account].lastChargeDate < month){
+    function balanceIncOfMon() public view returns (uint128) {
+        if(chargeStructCheck[msg.sender].lastChargeDate < month){
             return 0;
         }
         else{
-            return chargeStructCheck[_account].incentiveOfMonth;    //*(-10**18)
+            return chargeStructCheck[msg.sender].incentiveOfMonth;    //*(-10**18)
         }
     }
     
