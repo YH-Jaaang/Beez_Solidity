@@ -25,7 +25,7 @@ contract WonToken is AccessControlEnumerable, ERC20{
     mapping (address => chargeStruct) chargeStructCheck;  //주소 넣어서 인센티브 구조체 가져오는 매핑
     uint128 incentiveRate;                          //인센티브 비율
     
-    uint256 month = 1633014000;     //매달 초기화(이달 1일을 나타냄)
+    uint256 month = 1627743600;     //매달 초기화(이달 1일을 나타냄)
     uint8 decimals = 10**0;             //decimals 10**18 X / 10**0 = etherscan, remix 보기 편함 
     uint128 maxIncentive = 500000;  //한달 혜택가능금액
     uint128 maxWonCharge = 2000000; //한달 충전가능금액
@@ -53,7 +53,6 @@ contract WonToken is AccessControlEnumerable, ERC20{
     
     //매달 변경될때, aws람다를 사용해 백앤드에 요청을 보낸다. 요청받은 백앤드는 현재 시간(UNIX시간)을 setMonth에 입력 
     function setMonth(uint256 _month) public {
-        require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         month = _month;
     }
     function getMonth() public view returns (uint256) {
@@ -77,15 +76,16 @@ contract WonToken is AccessControlEnumerable, ERC20{
         chargeStructCheck[_to].incentiveOfMonth += incentiveRate;
     }
     //충전 + 인센티브 충전
-    function chargeCheck(address _to, uint128  _amount, uint256 _date) public {
+    function chargeCheck(address _to, uint128  _amount) public {
          //한달 최대 충전량
-        updateMonth(_to, _date);    //require 전에 해줘야됨. 전달+지금충전하려는 금액이 2백이 넘으면 실행 불가.
+        updateMonth(_to, block.timestamp);    //require 전에 해줘야됨. 전달+지금충전하려는 금액이 2백이 넘으면 실행 불가.
         require(_amount >= minWonCharge);   // //최소충전금액 10000원을 넘어야 충전가능
         require(chargeStructCheck[_to].wonOfMonth + _amount <= maxWonCharge); //최대충전금액 2000000원을 넘지않아야함
         chargeStructCheck[_to].wonOfMonth += _amount;
         
         //이번달 충전금액(현재 충전할 금액을 더한)이 최대인센티브(50만원) 보다 작거나 같으면 인센티브 충전
         if(chargeStructCheck[_to].wonOfMonth <= maxIncentive){
+            charge(_to, 0);
             incentiveCharge(_to, _amount);
         }else{
             //이번달 충전 금액(현재 충전금액을 뺀)이 최대 인센티브보다 적다
@@ -95,6 +95,7 @@ contract WonToken is AccessControlEnumerable, ERC20{
             }
             else{
                 charge(_to, _amount);
+                incentiveCharge(_to, 0);
             }
         }
         emit chargeResult(true, _amount);
@@ -118,22 +119,22 @@ contract WonToken is AccessControlEnumerable, ERC20{
 /*************************사용자, 소상공인 MAIN화면에 출력되는 원화토큰 view 함수*********************************/
 
     //이달의 충전금액  ////인센티브 정확히 카운팅하는 함수  //결제히스토리용 함수
-    function balanceWonOfMon() public view returns (uint128){
-        if(chargeStructCheck[msg.sender].lastChargeDate < month){
+    function balanceWonOfMon(address _to) public view returns (uint128){
+        if(chargeStructCheck[_to].lastChargeDate < month){
             return 0;
         }
         else{
-            return chargeStructCheck[msg.sender].wonOfMonth;
+            return chargeStructCheck[_to].wonOfMonth;
         }
     }
     
     //이번달 인센티브 확인
-    function balanceIncOfMon() public view returns (uint128) {
-        if(chargeStructCheck[msg.sender].lastChargeDate < month){
+    function balanceIncOfMon(address _to) public view returns (uint128) {
+        if(chargeStructCheck[_to].lastChargeDate < month){
             return 0;
         }
         else{
-            return chargeStructCheck[msg.sender].incentiveOfMonth;    //*(-10**18)
+            return chargeStructCheck[_to].incentiveOfMonth;    //*(-10**18)
         }
     }
     
