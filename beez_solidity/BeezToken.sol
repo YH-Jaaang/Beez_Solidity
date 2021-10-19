@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-// import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-// import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "./Payment.sol";
 
 contract BeezToken is AccessControlEnumerable, ERC20{
@@ -41,10 +39,10 @@ contract BeezToken is AccessControlEnumerable, ERC20{
     }
         
     //매달 변경될때, aws람다를 사용해 백앤드에 요청을 보낸다. 요청받은 백앤드는 현재 시간(UNIX시간)을 setMonth에 입력 
-    function setMonth(uint256 _month) public {
+    function setMonth(uint256 _month) external {
         month = _month;
     }
-    function getMonth() public view returns (uint256) {
+    function getMonth() external view returns (uint256) {
         return month;
     }
     
@@ -52,7 +50,7 @@ contract BeezToken is AccessControlEnumerable, ERC20{
 /*********사용자, 소상공인 결재 / 사용자 리뷰페이백 / 소상공인 환전 함수***********/
 
     //결제
-    function payment(address _sender, address _recipient, uint128 _wonAmount, uint128 _amount, uint256 _date) public virtual returns (bool){
+    function payment(address _sender, address _recipient, uint128 _wonAmount, uint128 _amount, uint256 _date) external virtual returns (bool){
         updateMonth(_recipient, _date); //_date는 나중에 뺄꺼임. 이번달 첫 결재할 경우, 소상공인 incentiveCheck[_recipient].wonOfMonth 0으로 만들기 위해 //
         _transfer(_sender, _recipient, _amount*decimals); //won 결제
         paybackCheck[_recipient].beezOfMonth += _amount;   //소상공인 (이번달)현금매출 증가
@@ -69,8 +67,7 @@ contract BeezToken is AccessControlEnumerable, ERC20{
     }
     
     //소상공인 환전 함수 
-     function exchange(address _to, uint256  _amount) public {
-         require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
+     function exchangeBurn(address _to, uint256  _amount) external {
         _burn(_to, _amount*decimals);
      }
      

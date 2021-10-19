@@ -1,6 +1,3 @@
-//결제 : transfer로 원화, 비즈 교환 
-//      구매페이백(원화로만 결제했을 경우 - 원화코인 1.0 %를 비즈로 전달)
-//
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -45,8 +42,13 @@ contract Payment {
     }
     
 // -----------------------------------------------event-----------------------------------------------
-    event bzTokenPayback(bool result,address sender, address recipient, uint128 wonAmount, uint128 bzAmount);
-    
+    //결제결과 로그 
+    event paymentResult(address to, address recipient, uint128 wonAmount , uint128 bzAmount);
+    //환전결과 로그
+    event exchangeResult(address to, uint128 withDrawAmount);
+    //리뷰 결과 로그
+    event reviewResult(address to);
+
     constructor() {
         owner = msg.sender;
     }
@@ -62,20 +64,22 @@ contract Payment {
         getMonthWon = wonTokenAddr.getMonth();
         getMonthBz = bzTokenAddr.getMonth();
     }
-    function setMonth(uint256 _month) public onlyOwner {
+    function setMonth(uint256 _month) external onlyOwner {
         wonTokenAddr.setMonth(_month);
         bzTokenAddr.setMonth(_month);
     }
     //토큰CA를 한번만 setting하기 onlyOwner
-    function setTokenCA(WonToken _wonTokenAddr, BeezToken _bzTokenAddr) public onlyOwner {
+    function setTokenCA(WonToken _wonTokenAddr, BeezToken _bzTokenAddr) external onlyOwner {
         wonTokenAddr = _wonTokenAddr;
         bzTokenAddr = _bzTokenAddr;
     }
     
     //wonToken : mint(생성), beezToken : burn(소멸)   //시스템이 해야될 일
-    function exchange(address _to, uint256 _amount) public {
-        wonTokenAddr.charge(_to, _amount);
-        bzTokenAddr.exchange(_to, _amount);
+    function exchange(address _to, uint128 _amount) external onlyOwner {
+        wonTokenAddr.exchangeCharge(_to, _amount);
+        bzTokenAddr.exchangeBurn(_to, _amount);
+        
+        emit exchangeResult(_to, _amount);
     }
     
 /******************************************************************************************************************/
@@ -102,31 +106,27 @@ contract Payment {
     }
     
     //receipt creation 결제(영수증 생성2)
-    function payment(address _visitor, address _recipient, uint128 _cost, uint128 _wonAmount, 
-    uint128 _bzAmount) public costCheck(_cost, _wonAmount,_bzAmount){
+    function payment(address _visitor, address _recipient, uint128 _cost, uint128 _wonAmount, uint128 _bzAmount) external costCheck(_cost, _wonAmount,_bzAmount){
         require(msg.sender == _visitor);
         require(wonTokenAddr.balance(_visitor) >= _wonAmount);
         require(bzTokenAddr.balance(_visitor) >= _bzAmount);
         
         uint visitTime =  block.timestamp;
         wonTokenAddr.payment(_visitor, _recipient, _wonAmount, visitTime);
-        bzTokenAddr.payment(_visitor, _recipient, _wonAmount, _bzAmount, visitTime);    //_wonAmount가져가는 이유 : payback때문에
+        if(_bzAmount>0){
+            bzTokenAddr.payment(_visitor, _recipient, _wonAmount, _bzAmount, visitTime);    //_wonAmount가져가는 이유 : payback때문에
         //bzTokenAddr.Payback(_visitor, _wonAmount, _date);
-        
-        //시스템이 이벤트를 watch하다가 catch해서 bzTokenAddr.charge(sender, _wonAmount);를 실행시킨다.
-
-        emit bzTokenPayback(true, _visitor, _recipient, _wonAmount, _bzAmount);
-        
+        }
         string memory _value1="";
         string memory _value2="";
         string memory _value3="";
         
         createReceipt(visitTime, _visitor,_recipient, _cost,_wonAmount,_bzAmount, _value1, _value2, _value3); //영수증 생성
-
+        emit paymentResult(_visitor, _recipient, _wonAmount , _bzAmount);
     }
 
     //사용자 영수증(리뷰) 조회
-    function getReview(address _address, uint _rangeDate1, uint _rangeDate2)public view returns(Receipt[] memory){
+    function getReview(address _address, uint _rangeDate1, uint _rangeDate2) external view returns(Receipt[] memory){
         
         uint64 arrayCnt;
         uint time;
@@ -144,21 +144,23 @@ contract Payment {
             }
             //기간설정 검색(2020.1.29 ~ 2020.3.20)
             else{
-                if(_rangeDate1 <= time && time <= _rangeDate2 ){
-                    arrayCnt++;
-                }
-                else{
+                if(_rangeDate1 > time){
                     break;
                 }
+                else if(_rangeDate1 <= time && time <= _rangeDate2 ){
+                    arrayCnt++;
+                }
+              
+
             }
         }
         
         Receipt[] memory result = new Receipt[](arrayCnt);
+        uint128 arrListCnt = 0;
         
         for(uint i=reviewReceipts[ _address ].length; i >= 1; i--){
             bytes32 receiptHash = reviewReceipts[ _address ][i-1];
             Receipt memory rc = receipts[ receiptHash ];
-            
             time = rc.visitTime;
             
             //기간일수 검색(7,30,90,180 등)
@@ -170,18 +172,21 @@ contract Payment {
             }
             //기간설정 검색(2020.1.29 ~ 2020.3.20)
             else{
-                if(_rangeDate1 <= time && time <= _rangeDate2 ){
-                    result[reviewReceipts[ _address ].length - i] = rc;
-                }
-                else{
+                if(_rangeDate1 > time){
                     return result;
                 }
+                else if(_rangeDate1 <= time && time <= _rangeDate2 ){
+                    result[arrListCnt] = rc;
+                    arrListCnt++;
+                }
+               
+                
             }
         }
         return result;
-     }
+    }
      
-     function reviewSearch(address _visitor,uint _visitTime, uint low, uint high) public returns(uint){
+    function reviewSearch(address _visitor,uint _visitTime, uint low, uint high) internal returns(uint){
         bytes32 receiptHash;
         Receipt memory rc ;
     	uint mid;
@@ -204,8 +209,9 @@ contract Payment {
     	return 1*2**256-1; // 탐색 실패 
     }
     //리뷰작성
-    function writeReview(address _visitor, uint _visitTime, string memory value1, string memory value2, string memory value3) public {
+    function writeReview(address _visitor, uint _visitTime, string memory value1, string memory value2, string memory value3) external {
          require(msg.sender == _visitor);
+         require(_visitTime > block.timestamp - 7 days);
         //uint receiptTime = 1633328119;  //입력시간
         uint _receiptIndex = reviewSearch(_visitor,_visitTime, 0, reviewReceipts[ _visitor ].length );
 
@@ -221,12 +227,13 @@ contract Payment {
         bzTokenAddr.Payback(_visitor, rc.cost, block.timestamp);
         receipts[receiptHash]= rc;
         
+        emit reviewResult(_visitor);
     }
     
 /******************************************************************************************************************/
 /*************************************사용자, 소상공인 Main 출력 함수*********************************************/
 
-    function userMainLoad(address _to) public view returns(Main memory){
+    function userMainLoad(address _to) external view returns(Main memory){
         Main memory result;
         result.wonBalace = wonTokenAddr.balance(_to);          //사용가능 금액
         result.WonOfMon = wonTokenAddr.balanceWonOfMon(_to);   //이달의 충전금액
@@ -238,7 +245,7 @@ contract Payment {
     }
     
     //소상공인 메인 화면 출력
-    function recipientMainLoad(address _recipient) public view returns(Main memory){
+    function recipientMainLoad(address _recipient) external view returns(Main memory){
         // won.balanceOfWon[_recipient] + won.balanceWonOfMon[_store]; 총매출은 프론트 단에서 처리해야 할듯
         Main memory result;
         result.wonBalace = wonTokenAddr.balance(_recipient);         //출금가능현금
@@ -249,35 +256,5 @@ contract Payment {
         return result;
     }
     
-/****************************************나중에 삭제*************************************************************************/
-    
-    //나중에 삭제
-    // beez balance check 사용가능 bz 체크
-    // function beezBalance() public view returns (uint256){
-    //     return bzTokenAddr.balance(msg.sender);
-    // }
-    // //나중에 삭제
-    // //won balance check 사용가능 WON체크
-    // function wonBalance(address _to) public view returns (uint256){
-    //     return wonTokenAddr.balance(_to);
-    // }
-    
-    //나중에 삭제 //결제 TEST
-    function testPayment(address _visitor, address _recipient, uint128 _cost, uint128 _wonAmount, 
-    uint128 _bzAmount, uint256 visitTime) public costCheck(_cost, _wonAmount,_bzAmount){
-        require(wonTokenAddr.balance(_visitor) >= _wonAmount);
-        require(bzTokenAddr.balance(_visitor) >= _bzAmount);
-        wonTokenAddr.payment(_visitor, _recipient, _wonAmount, visitTime);
-        bzTokenAddr.payment(_visitor, _recipient, _wonAmount, _bzAmount, visitTime);    //_wonAmount가져가는 이유 : payback때문에
-
-        emit bzTokenPayback(true, _visitor, _recipient, _wonAmount, _bzAmount);
-        
-        string memory _value1="";
-        string memory _value2="";
-        string memory _value3="";
-        
-        createReceipt(visitTime, _visitor,_recipient, _cost,_wonAmount,_bzAmount, _value1, _value2, _value3); //영수증 생성
-
-    }
 }
     
