@@ -222,7 +222,7 @@ contract Payment {
         rc.value2 = value2;  //해당 rc의 value2값을 수정
         rc.value3 = value3;  //해당 rc의 value3값을 수정
 
-        bzTokenAddr.Payback(_visitor, rc.cost, block.timestamp);
+        bzTokenAddr.Payback(_visitor, rc.wonTokenCount, block.timestamp);
         receipts[receiptHash]= rc;
         
         emit reviewResult(_visitor);
