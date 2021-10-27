@@ -113,10 +113,8 @@ contract Payment {
         
         uint visitTime =  block.timestamp;
         wonTokenAddr.payment(_visitor, _recipient, _wonAmount, visitTime);
-        if(_bzAmount>0){
-            bzTokenAddr.payment(_visitor, _recipient, _wonAmount, _bzAmount, visitTime);    //_wonAmount가져가는 이유 : payback때문에
-        //bzTokenAddr.Payback(_visitor, _wonAmount, _date);
-        }
+        bzTokenAddr.payment(_visitor, _recipient, _wonAmount, _bzAmount, visitTime);    //_wonAmount가져가는 이유 : payback때문에
+
         string memory _value1="";
         string memory _value2="";
         string memory _value3="";
@@ -250,11 +248,13 @@ contract Payment {
         Main memory result;
         result.wonBalace = wonTokenAddr.balance(_recipient);         //출금가능현금
         result.WonOfMon = wonTokenAddr.balanceWonOfMon(_recipient);   //이번달 원매출
+        result.IncOfMon = wonTokenAddr.balanceIncOfMon(_recipient);   //이달의 인센티브
         result.BzBalace = bzTokenAddr.balance(_recipient);           //출금가능 비즈
         result.BzOfMon = bzTokenAddr.balanceBeezOfMon(_recipient);    //이번달 비즈매출
         
         return result;
     }
     
+/****************************************나중에 삭제*************************************************************************/
 }
     

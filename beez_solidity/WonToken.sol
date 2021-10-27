@@ -107,15 +107,16 @@ contract WonToken is AccessControlEnumerable, ERC20{
     }
     
     //소상공인 환전 함수
-    function exchangeCharge(address _to, uint256 _amount) external virtual {
+    function exchangeCharge(address _to, uint128 _amount) external virtual {
         require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         _mint(_to, _amount*decimals);
     }
     
     //소상공인 출금 함수 
      function withDraw(address _to, uint128  _amount) external {
-         require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
+        require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         _burn(_to, _amount*decimals);
+        chargeStructCheck[_to].incentiveOfMonth += _amount;
         emit withDrawResult(_to, _amount);
      }
      
