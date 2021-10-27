@@ -33,9 +33,9 @@ contract WonToken is AccessControlEnumerable, ERC20{
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     
     //충전결과 로그 
-    event chargeResult(address to, uint128 chargeAmount , uint128 chargeInc);
+    event chargeResult(address indexed to, uint128 chargeAmount , uint128 chargeInc);
     //출금결과 로그
-    event withDrawResult(address to, uint128 withDrawAmount);
+    event withDrawResult(address indexed to, uint128 withDrawAmount);
 /******************************************************************************************************************/
 /***사용자, 소상공인 MAIN화면 매달 초기화 함수(사용자 : 이달의 충전금액, 이달의 인센티브 & 소상공인 : 현금매출)****/
 
@@ -52,6 +52,7 @@ contract WonToken is AccessControlEnumerable, ERC20{
     
     //매달 변경될때, aws람다를 사용해 백앤드에 요청을 보낸다. 요청받은 백앤드는 현재 시간(UNIX시간)을 setMonth에 입력 
     function setMonth(uint256 _month) external {
+        require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         month = _month;
     }
     function getMonth() external view returns (uint256) {
@@ -76,7 +77,8 @@ contract WonToken is AccessControlEnumerable, ERC20{
     }
     //충전 + 인센티브 충전
     function chargeCheck(address _to, uint128  _amount) external {
-         //한달 최대 충전량
+        //한달 최대 충전량
+        require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         updateMonth(_to, block.timestamp);    //require 전에 해줘야됨. 전달+지금충전하려는 금액이 2백이 넘으면 실행 불가.
         require(_amount >= minWonCharge);   // //최소충전금액 10000원을 넘어야 충전가능
         require(chargeStructCheck[_to].wonOfMonth + _amount <= maxWonCharge); //최대충전금액 2000000원을 넘지않아야함
@@ -106,6 +108,7 @@ contract WonToken is AccessControlEnumerable, ERC20{
     
     //소상공인 환전 함수
     function exchangeCharge(address _to, uint256 _amount) external virtual {
+        require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         _mint(_to, _amount*decimals);
     }
     
@@ -118,6 +121,7 @@ contract WonToken is AccessControlEnumerable, ERC20{
      
     //원화 토큰 결제
     function payment(address _sender, address _recipient, uint128 _amount, uint256 _date) external virtual returns (bool){
+        require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         updateMonth(_recipient, _date); //_date는 나중에 뺄꺼임. 이번달 첫 결재할 경우, 소상공인 incentiveCheck[_recipient].wonOfMonth 0으로 만들기 위해 //
         _transfer(_sender, _recipient, _amount*decimals); //won 결제
         chargeStructCheck[_recipient].wonOfMonth += _amount;   //소상공인 (이번달)현금매출 증가
@@ -151,6 +155,11 @@ contract WonToken is AccessControlEnumerable, ERC20{
     function balance(address _account) external view virtual returns(uint256) {
         return balanceOf(_account); //* (10 ** 18)
     }
-    
 /******************************************************************************************************************/
+/***************************************************권한**********************************************************/
+    function addMinter(address _address) external {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have admin role to addMinter");
+        _setupRole(MINTER_ROLE, _address);
+    }
+
 }

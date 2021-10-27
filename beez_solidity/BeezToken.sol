@@ -40,6 +40,7 @@ contract BeezToken is AccessControlEnumerable, ERC20{
         
     //매달 변경될때, aws람다를 사용해 백앤드에 요청을 보낸다. 요청받은 백앤드는 현재 시간(UNIX시간)을 setMonth에 입력 
     function setMonth(uint256 _month) external {
+        require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         month = _month;
     }
     function getMonth() external view returns (uint256) {
@@ -51,6 +52,7 @@ contract BeezToken is AccessControlEnumerable, ERC20{
 
     //결제
     function payment(address _sender, address _recipient, uint128 _wonAmount, uint128 _amount, uint256 _date) external virtual returns (bool){
+        require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         updateMonth(_recipient, _date); //_date는 나중에 뺄꺼임. 이번달 첫 결재할 경우, 소상공인 incentiveCheck[_recipient].wonOfMonth 0으로 만들기 위해 //
         _transfer(_sender, _recipient, _amount*decimals); //won 결제
         paybackCheck[_recipient].beezOfMonth += _amount;   //소상공인 (이번달)현금매출 증가
@@ -60,6 +62,7 @@ contract BeezToken is AccessControlEnumerable, ERC20{
     
     //리뷰 페이백  external- 컨트랙트 바깥에서만 호출될 수 있고 컨트랙트 내의 다른 함수에서 호출 X(public과 동일)
     function Payback(address _to, uint128 _amount, uint256 _date) public virtual  {
+        require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         updateMonth(_to, _date);
         _mint(_to, (_amount/incentiveRate)*decimals); //payback 함수
         paybackCheck[_to].beezOfMonth +=  _amount/incentiveRate;
@@ -68,8 +71,10 @@ contract BeezToken is AccessControlEnumerable, ERC20{
     
     //소상공인 환전 함수 
      function exchangeBurn(address _to, uint256  _amount) external {
+         require(hasRole(MINTER_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have minter role to mint");
         _burn(_to, _amount*decimals);
      }
+     
      
 /******************************************************************************************************************/
 /*************************사용자, 소상공인 MAIN화면에 출력되는 비즈토큰 view 함수*********************************/
@@ -90,4 +95,9 @@ contract BeezToken is AccessControlEnumerable, ERC20{
     }
 
 /******************************************************************************************************************/
+/***************************************************권한**********************************************************/
+    function addMinter(address _address) external {
+        require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "ERC20PresetMinterPauser: must have admin role to addMinter");
+        _setupRole(MINTER_ROLE, _address);
+    }
 }

@@ -43,11 +43,11 @@ contract Payment {
     
 // -----------------------------------------------event-----------------------------------------------
     //결제결과 로그 
-    event paymentResult(address to, address recipient, uint128 wonAmount , uint128 bzAmount);
+    event paymentResult( address indexed to, address indexed recipient, uint128 wonAmount , uint128 bzAmount);
     //환전결과 로그
-    event exchangeResult(address to, uint128 withDrawAmount);
+    event exchangeResult(address indexed to, uint128 withDrawAmount);
     //리뷰 결과 로그
-    event reviewResult(address to);
+    event reviewResult(address indexed to);
 
     constructor() {
         owner = msg.sender;
